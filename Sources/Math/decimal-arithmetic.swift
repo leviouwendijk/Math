@@ -127,6 +127,27 @@ public enum DecimalArithmetic {
         return result.decimalValue
     }
 
+
+    /// Arithmetic without forced fractional-scale quantization. Still bounded by Foundation Decimal precision.
+    public static func unquantized(
+        _ operation: Operation, lhs: Decimal, rhs: Decimal
+    ) throws -> Decimal {
+        let left = NSDecimalNumber(decimal: lhs)
+        let right = NSDecimalNumber(decimal: rhs)
+        guard left != .notANumber, right != .notANumber else { throw Failure.invalidResult }
+        let result: NSDecimalNumber
+        switch operation {
+        case .add: result = left.adding(right)
+        case .subtract: result = left.subtracting(right)
+        case .multiply: result = left.multiplying(by: right)
+        case .divide:
+            guard right != .zero else { throw Failure.divisionByZero }
+            result = left.dividing(by: right)
+        }
+        guard result != .notANumber else { throw Failure.invalidResult }
+        return result.decimalValue
+    }
+
     public static func string(_ value: Decimal) -> String {
         NSDecimalNumber(decimal: value).stringValue
     }

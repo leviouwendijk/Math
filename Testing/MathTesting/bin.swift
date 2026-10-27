@@ -103,6 +103,87 @@ enum MathTestSuite {
             )
         }
 
+
+        Test("ratios-aggregations-and-precision") {
+            let one = try DecimalArithmetic.parse("1")
+            let three = try DecimalArithmetic.parse("3")
+            try Expect.equal(
+                DecimalArithmetic.string(try DecimalRatio.divide(one, by: three, scale: 4)),
+                "0.3333", "Explicit division precision"
+            )
+            try Expect.equal(
+                DecimalArithmetic.string(try DecimalRatio.percentage_change(from: 100, to: 115)),
+                "15", "Percent expressed as points"
+            )
+            try Expect.equal(
+                DecimalArithmetic.string(try DecimalAggregation.sum([0.1, 0.2, 0.3])),
+                "0.6", "Decimal accumulation"
+            )
+            try Expect.equal(
+                DecimalArithmetic.string(try DecimalAggregation.weighted_mean([10, 20], weights: [1, 3])),
+                "17.5", "Weighted mean"
+            )
+            try Expect.equal(
+                DecimalArithmetic.string(try DecimalAggregation.median([3, 1, 2, 4])),
+                "2.5", "Median"
+            )
+            try Expect.throwsError("Zero baseline is not a zero result") {
+                _ = try DecimalRatio.relative_change(from: 0, to: 10)
+            }
+            try Expect.throwsError("Zero weight mass is invalid") {
+                _ = try DecimalAggregation.weighted_mean([1], weights: [0])
+            }
+        }
+
+
+        Test("allocation-largest-remainder-reconciliation") {
+            let shares = try DecimalAllocation.proportional(total: 100, weights: [1, 1, 1])
+            try Expect.equal(
+                shares.map(DecimalArithmetic.string),
+                ["33.34", "33.33", "33.33"], "Stable tie-breaking"
+            )
+            try Expect.equal(
+                DecimalArithmetic.string(try DecimalAggregation.sum(shares)),
+                "100", "Parts reconcile with total"
+            )
+            let negative = try DecimalAllocation.proportional(total: -0.01, weights: [1, 1])
+            try Expect.equal(negative.map(DecimalArithmetic.string), ["-0.01", "0"], "Signed allocation")
+            try Expect.throwsError("Negative weight rejected") {
+                _ = try DecimalAllocation.proportional(total: 10, weights: [-1, 2])
+            }
+        }
+
+
+        Test("series-statistics-interpolation") {
+            try Expect.equal(
+                try DecimalSeries.difference([10, 15, 12]).map(DecimalArithmetic.string),
+                ["5", "-3"], "Differences retain sign"
+            )
+            try Expect.equal(
+                try DecimalSeries.cumulative([1, 2, 3]).map(DecimalArithmetic.string),
+                ["1", "3", "6"], "Cumulative sequence"
+            )
+            try Expect.equal(
+                try DecimalSeries.moving_mean([10, 20, 30], window: 2).map(DecimalArithmetic.string),
+                ["15", "25"], "Window-aligned means"
+            )
+            try Expect.equal(
+                try DecimalSeries.normalize([2, 4, 6]).map(DecimalArithmetic.string),
+                ["0", "0.5", "1"], "Min-max normalization"
+            )
+            try Expect.equal(
+                DecimalArithmetic.string(try DecimalStatistics.population_variance([1, 2, 3])),
+                "0.666666666667", "Population variance"
+            )
+            try Expect.equal(
+                DecimalArithmetic.string(try DecimalStatistics.percentile([1, 2, 3, 4], at: 50)),
+                "2.5", "Linear percentile"
+            )
+            try Expect.throwsError("Constant min-max series has no defined scale") {
+                _ = try DecimalSeries.normalize([1, 1])
+            }
+        }
+
         Test("reject-invalid-decimal-inputs") {
             try Expect.throwsError("Reject malformed decimal literal") {
                 _ = try DecimalArithmetic.parse("42garbage")
