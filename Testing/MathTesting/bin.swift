@@ -62,6 +62,47 @@ enum MathTestSuite {
             )
         }
 
+        Test("explicit-decimal-rounding-modes") {
+            let positive = try DecimalArithmetic.parse("1.005")
+            let negative = try DecimalArithmetic.parse("-1.005")
+            try Expect.equal(
+                DecimalArithmetic.string(try DecimalArithmetic.round(positive, scale: 2)),
+                "1.01", "Plain positive tie"
+            )
+            try Expect.equal(
+                DecimalArithmetic.string(try DecimalArithmetic.round(negative, scale: 2)),
+                "-1.01", "Plain negative tie"
+            )
+            try Expect.equal(
+                DecimalArithmetic.string(try DecimalArithmetic.round(positive, scale: 2, mode: .bankers)),
+                "1", "Bankers positive tie"
+            )
+            try Expect.equal(
+                DecimalArithmetic.string(try DecimalArithmetic.round(negative, scale: 2, mode: .bankers)),
+                "-1", "Bankers negative tie"
+            )
+        }
+
+        Test("decimal-comparison-tolerance") {
+            let a = try DecimalArithmetic.parse("0.300")
+            let b = try DecimalArithmetic.parse("0.3")
+            let tolerance = try DecimalArithmetic.parse("0.01")
+            let difference = try DecimalArithmetic.parse("-0.02")
+            try Expect.equal(DecimalComparison.compare(a, b), .equal, "Decimal equality")
+            try Expect.equal(
+                DecimalComparison.withinTolerance(a, b, tolerance: tolerance),
+                true, "Within tolerance"
+            )
+            try Expect.equal(
+                DecimalComparison.exceeds(difference, tolerance: tolerance),
+                true, "Symmetric tolerance"
+            )
+            try Expect.equal(
+                DecimalComparison.exceeds(tolerance, tolerance: tolerance),
+                false, "Inclusive boundary"
+            )
+        }
+
         Test("reject-invalid-decimal-inputs") {
             try Expect.throwsError("Reject malformed decimal literal") {
                 _ = try DecimalArithmetic.parse("42garbage")

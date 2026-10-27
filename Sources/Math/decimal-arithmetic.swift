@@ -10,6 +10,24 @@ public enum DecimalArithmetic {
         case divide
     }
 
+    /// Direction and tie-breaking semantics of Foundation decimal rounding.
+    /// `down` rounds toward negative infinity; `up` toward positive infinity.
+    public enum RoundingMode: String, Sendable, Codable, Hashable, CaseIterable {
+        case plain
+        case bankers
+        case down
+        case up
+
+        var foundation: NSDecimalNumber.RoundingMode {
+            switch self {
+            case .plain: .plain
+            case .bankers: .bankers
+            case .down: .down
+            case .up: .up
+            }
+        }
+    }
+
     public enum Failure: Error, Sendable {
         case invalidLiteral(String)
         case invalidScale(Int)
@@ -39,7 +57,8 @@ public enum DecimalArithmetic {
         _ operation: Operation,
         lhs: Decimal,
         rhs: Decimal,
-        scale: Int = 12
+        scale: Int = 12,
+        mode: RoundingMode = .plain
     ) throws -> Decimal {
         guard (0...16).contains(scale) else {
             throw Failure.invalidScale(scale)
@@ -53,7 +72,7 @@ public enum DecimalArithmetic {
         }
 
         let behavior = NSDecimalNumberHandler(
-            roundingMode: .plain,
+            roundingMode: mode.foundation,
             scale: Int16(scale),
             raiseOnExactness: false,
             raiseOnOverflow: false,
@@ -80,6 +99,32 @@ public enum DecimalArithmetic {
         }
 
         return rounded.decimalValue
+    }
+
+    /// Explicitly round an existing Decimal without changing its predecessors.
+    /// Do not use binary Double conversion for accounting-sensitive values.
+    public static func round(
+        _ value: Decimal,
+        scale: Int,
+        mode: RoundingMode = .plain
+    ) throws -> Decimal {
+        guard (0...16).contains(scale) else {
+            throw Failure.invalidScale(scale)
+        }
+        let behavior = NSDecimalNumberHandler(
+            roundingMode: mode.foundation,
+            scale: Int16(scale),
+            raiseOnExactness: false,
+            raiseOnOverflow: false,
+            raiseOnUnderflow: false,
+            raiseOnDivideByZero: false
+        )
+        let result = NSDecimalNumber(decimal: value)
+            .rounding(accordingToBehavior: behavior)
+        guard result != .notANumber else {
+            throw Failure.invalidResult
+        }
+        return result.decimalValue
     }
 
     public static func string(_ value: Decimal) -> String {
