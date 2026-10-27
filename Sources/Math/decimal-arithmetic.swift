@@ -22,12 +22,12 @@ public enum DecimalArithmetic {
         let digitCount = literal.utf8.filter { (48...57).contains($0) }.count
 
         guard literal.count <= 128,
-              digitCount <= 38,
-              literal.range(of: pattern, options: .regularExpression) != nil,
-              let value = Decimal(
-                  string: literal,
-                  locale: Locale(identifier: "en_US_POSIX")
-              )
+            digitCount <= 38,
+            literal.range(of: pattern, options: .regularExpression) != nil,
+            let value = Decimal(
+                string: literal,
+                locale: Locale(identifier: "en_US_POSIX")
+            )
         else {
             throw Failure.invalidLiteral(literal)
         }
