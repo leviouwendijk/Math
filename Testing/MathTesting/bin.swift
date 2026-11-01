@@ -184,6 +184,74 @@ enum MathTestSuite {
             }
         }
 
+        Test("assertion-percentages-and-rounding-boundaries") {
+            let exact = try DecimalAssertion.percentage(
+                of: DecimalArithmetic.parse("100"),
+                rate: DecimalArithmetic.parse("21"),
+                observed: DecimalArithmetic.parse("21"),
+                scale: 2
+            )
+            try Expect.equal(exact.matches, true, "Exact VAT relationship")
+            try Expect.equal(DecimalArithmetic.string(exact.difference), "0", "Zero difference")
+
+            let mismatch = try DecimalAssertion.percentage(
+                of: DecimalArithmetic.parse("100"),
+                rate: DecimalArithmetic.parse("21"),
+                observed: DecimalArithmetic.parse("20.99"),
+                scale: 2
+            )
+            try Expect.equal(mismatch.matches, false, "One-cent mismatch")
+            try Expect.equal(DecimalArithmetic.string(mismatch.difference), "-0.01", "Signed difference")
+
+            let tolerated = try DecimalAssertion.verify(
+                expected: DecimalArithmetic.parse("21"),
+                observed: DecimalArithmetic.parse("20.99"),
+                tolerance: DecimalArithmetic.parse("0.01")
+            )
+            try Expect.equal(tolerated.matches, true, "Inclusive tolerance")
+
+            let arbitrary = try DecimalAssertion.percentage(
+                of: DecimalArithmetic.parse("80"),
+                rate: DecimalArithmetic.parse("0.125"),
+                observed: DecimalArithmetic.parse("0.10"),
+                scale: 2
+            )
+            try Expect.equal(arbitrary.matches, true, "Fractional percentage point rate")
+
+            let partialA = try DecimalAssertion.percentage(
+                of: DecimalArithmetic.parse("1"),
+                rate: DecimalArithmetic.parse("33.5"),
+                observed: DecimalArithmetic.parse("0.34"),
+                scale: 2
+            )
+            let partialB = try DecimalAssertion.percentage(
+                of: DecimalArithmetic.parse("1"),
+                rate: DecimalArithmetic.parse("33.5"),
+                observed: DecimalArithmetic.parse("0.34"),
+                scale: 2
+            )
+            let aggregate = try DecimalAssertion.percentage(
+                of: DecimalArithmetic.parse("2"),
+                rate: DecimalArithmetic.parse("33.5"),
+                observed: DecimalArithmetic.parse("0.67"),
+                scale: 2
+            )
+            try Expect.equal(
+                DecimalArithmetic.string(try DecimalAggregation.sum([partialA.expected, partialB.expected])),
+                "0.68",
+                "Per-line rounding differs from aggregate rounding"
+            )
+            try Expect.equal(DecimalArithmetic.string(aggregate.expected), "0.67", "Aggregate policy explicit")
+
+            try Expect.throwsError("Reject negative tolerance") {
+                _ = try DecimalAssertion.verify(
+                    expected: 1,
+                    observed: 1,
+                    tolerance: -1
+                )
+            }
+        }
+
         Test("reject-invalid-decimal-inputs") {
             try Expect.throwsError("Reject malformed decimal literal") {
                 _ = try DecimalArithmetic.parse("42garbage")
