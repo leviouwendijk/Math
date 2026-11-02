@@ -252,6 +252,20 @@ enum MathTestSuite {
             }
         }
 
+        Test("decimal-linear-scale-signed-and-constant-domains") {
+            let domain = try DecimalLinearScale(lower: -5, upper: 10)
+            try Expect.equal(DecimalArithmetic.string(try domain.position(of: -5)), "0", "Lower bound")
+            try Expect.equal(DecimalArithmetic.string(try domain.position(of: 10)), "1", "Upper bound")
+            try Expect.equal(DecimalArithmetic.string(try domain.position(of: 0, scale: 6)), "0.333333", "Signed zero baseline")
+            try Expect.equal(DecimalArithmetic.string(try domain.position(of: 25)), "2", "Extrapolation is explicit")
+            try Expect.throwsError("Constant chart domains are not silently normalized") {
+                _ = try DecimalLinearScale(lower: 0, upper: 0)
+            }
+            try Expect.throwsError("Inverted domains are rejected") {
+                _ = try DecimalLinearScale(lower: 2, upper: -2)
+            }
+        }
+
         Test("reject-invalid-decimal-inputs") {
             try Expect.throwsError("Reject malformed decimal literal") {
                 _ = try DecimalArithmetic.parse("42garbage")
